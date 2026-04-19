@@ -3,7 +3,7 @@ services:
     name: ai-automations
     runtime: node
     buildCommand: npm install
-    startCommand: node server.js
+    startCommand: npm start
     envVars:
       - key: GEMINI_API_KEY
         sync: false
