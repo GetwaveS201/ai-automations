@@ -1,6 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-const Anthropic = require('@anthropic-ai/sdk');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const path = require('path');
 
 const app = express();
@@ -16,12 +16,13 @@ app.post('/api/generate', async (req, res) => {
     return res.status(400).json({ error: 'Please provide meeting notes (at least 20 characters).' });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY not set. See README.' });
+    return res.status(500).json({ error: 'GEMINI_API_KEY not set. See README.' });
   }
 
-  const client = new Anthropic({ apiKey });
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
   const prompt = `You are a professional sales assistant. Given raw meeting notes or a call transcript, produce three things:
 
@@ -46,13 +47,8 @@ ${senderName ? `Sender: ${senderName}${senderCompany ? ` at ${senderCompany}` : 
 ${recipientName ? `Recipient: ${recipientName}` : ''}`;
 
   try {
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const text = message.content[0].text;
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
 
     const summaryMatch = text.match(/---SUMMARY---([\s\S]*?)---ACTION ITEMS---/);
     const actionsMatch = text.match(/---ACTION ITEMS---([\s\S]*?)---EMAIL---/);
@@ -66,7 +62,7 @@ ${recipientName ? `Recipient: ${recipientName}` : ''}`;
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message || 'Claude API error' });
+    res.status(500).json({ error: err.message || 'Gemini API error' });
   }
 });
 
