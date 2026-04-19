@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Sales Follow-up Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f8f9fa;
+      color: #1a1a1a;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container { max-width: 780px; margin: 0 auto; }
+
+    header { text-align: center; margin-bottom: 2.5rem; }
+    header h1 { font-size: 1.8rem; font-weight: 700; color: #0f0f0f; }
+    header p { margin-top: 0.5rem; color: #555; font-size: 0.95rem; }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 1.75rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 0.4rem;
+    }
+
+    textarea, input {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.92rem;
+      font-family: inherit;
+      color: #1a1a1a;
+      background: #fafafa;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+    textarea:focus, input:focus { border-color: #4f46e5; background: white; }
+    textarea { resize: vertical; min-height: 160px; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+    @media (max-width: 560px) { .row { grid-template-columns: 1fr; } }
+
+    .field { display: flex; flex-direction: column; }
+
+    button {
+      display: block;
+      width: 100%;
+      margin-top: 1.25rem;
+      padding: 0.8rem;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    button:hover:not(:disabled) { background: #4338ca; }
+    button:active:not(:disabled) { transform: scale(0.99); }
+    button:disabled { background: #a5a3e0; cursor: not-allowed; }
+
+    .spinner {
+      display: none;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      width: 18px; height: 18px;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #results { display: none; }
+
+    .result-section { margin-bottom: 1.5rem; }
+    .result-section h3 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #4f46e5;
+      margin-bottom: 0.6rem;
+    }
+    .result-section pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: inherit;
+      font-size: 0.92rem;
+      line-height: 1.6;
+      color: #222;
+    }
+
+    .copy-btn {
+      display: inline-block;
+      width: auto;
+      margin-top: 0.5rem;
+      padding: 0.35rem 0.75rem;
+      background: #f0f0ff;
+      color: #4f46e5;
+      border: 1px solid #d0ceff;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .copy-btn:hover { background: #e4e2ff; }
+
+    .error-msg {
+      display: none;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>AI Sales Follow-up Generator</h1>
+      <p>Paste your meeting notes. Get a summary, action items, and a ready-to-send email.</p>
+    </header>
+
+    <div class="card">
+      <label for="notes">Meeting Notes or Transcript *</label>
+      <textarea id="notes" placeholder="Paste raw notes, bullet points, or a call transcript here..."></textarea>
+
+      <div class="row">
+        <div class="field">
+          <label for="senderName">Your Name</label>
+          <input id="senderName" type="text" placeholder="Alex Chen" />
+        </div>
+        <div class="field">
+          <label for="senderCompany">Your Company</label>
+          <input id="senderCompany" type="text" placeholder="Acme Inc." />
+        </div>
+        <div class="field">
+          <label for="recipientName">Recipient Name</label>
+          <input id="recipientName" type="text" placeholder="Jordan Smith" />
+        </div>
+      </div>
+
+      <button id="generateBtn" onclick="generate()">
+        <span id="btnText">Generate Follow-up</span>
+        <div class="spinner" id="spinner"></div>
+      </button>
+      <div class="error-msg" id="errorMsg"></div>
+    </div>
+
+    <div class="card" id="results">
+      <div class="result-section">
+        <h3>Meeting Summary</h3>
+        <pre id="summary"></pre>
+      </div>
+      <div class="result-section">
+        <h3>Action Items</h3>
+        <pre id="actionItems"></pre>
+      </div>
+      <div class="result-section">
+        <h3>Follow-up Email</h3>
+        <pre id="email"></pre>
+        <button class="copy-btn" onclick="copyEmail()">Copy Email</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function generate() {
+      const notes = document.getElementById('notes').value.trim();
+      const senderName = document.getElementById('senderName').value.trim();
+      const senderCompany = document.getElementById('senderCompany').value.trim();
+      const recipientName = document.getElementById('recipientName').value.trim();
+      const errorMsg = document.getElementById('errorMsg');
+      const results = document.getElementById('results');
+      const btn = document.getElementById('generateBtn');
+      const btnText = document.getElementById('btnText');
+      const spinner = document.getElementById('spinner');
+
+      errorMsg.style.display = 'none';
+      results.style.display = 'none';
+
+      if (!notes || notes.length < 20) {
+        errorMsg.textContent = 'Please enter at least 20 characters of meeting notes.';
+        errorMsg.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btnText.textContent = 'Generating...';
+      spinner.style.display = 'block';
+
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notes, senderName, senderCompany, recipientName }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Server error');
+        }
+
+        document.getElementById('summary').textContent = data.summary || '(no summary)';
+        document.getElementById('actionItems').textContent = data.actionItems || '(none)';
+        document.getElementById('email').textContent = data.email || '(no email)';
+        results.style.display = 'block';
+        results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (err) {
+        errorMsg.textContent = err.message;
+        errorMsg.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btnText.textContent = 'Generate Follow-up';
+        spinner.style.display = 'none';
+      }
+    }
+
+    function copyEmail() {
+      const text = document.getElementById('email').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy Email', 1500);
+      });
+    }
+
+    document.getElementById('notes').addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') generate();
+    });
+  </script>
+</body>
+</html>
